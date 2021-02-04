@@ -1,0 +1,43 @@
+---
+title: "assignment1"
+author: "Magnus Bendix Borregaard"
+date: "4/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(leaflet)
+library(tidyverse)
+library(htmltools)
+
+```
+
+
+```{r}
+data_points <- read_csv('RCFeature.csv')
+
+leaflet() %>%
+  setView(lat = -33.7636569, lng = 150.2925029, zoom = 13) %>%
+  addProviderTiles('OpenTopoMap') %>%
+  addCircleMarkers(
+    clusterOptions = markerClusterOptions(), # Good idea, since they are very condensed
+    lng = data_points$Longitude,
+    lat = data_points$Latitude,
+    fillOpacity = 0.6,
+    opacity = 0,
+    popup = paste(
+      '<p><strong>FeatureType: </strong>', data_points$FeatureType, '</p>',
+      '<p><strong>FeatureID: </strong>', data_points$FeatureID, '</p>',
+      '<p><strong>Description: </strong>', data_points$Description, '</p>'
+    )
+  ) %>%
+  addMiniMap(position = 'bottomright', tiles = 'OpenTopoMap') %>%
+  addMeasure(position = 'bottomleft', primaryLengthUnit = 'meters', primaryAreaUnit = 'sqmeters')
+  
+  
+  
+  
+  
+```
