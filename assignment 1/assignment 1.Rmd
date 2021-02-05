@@ -1,43 +1,76 @@
 ---
-title: "assignment1"
+title: "Assignment 1 - Interactive Map"
 author: "Magnus Bendix Borregaard"
 date: "4/2/2021"
-output: html_document
+output:
+  html_document:
+    theme: darkly
+    highlight: breezedark
 ---
+## 1.
+Describe a problem or question in your field for which spatial analysis could be applicable.
+Getting an overview of http(s) requests sent around the world at a given point in time (A specific hour or date). 
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+## 2.
+List 5 data layers that you think are necessary to answer your question/solve your problem. Find on the internet/github and then describe examples of two or three of your listed layers.
 
+### Layer 1
+A raster map image of the world. Does not have to have any specific features like roads or geography. Something kind of like this: 
+
+<img alt="world map" title="world map" src="https://www.pixelstalk.net/wp-content/uploads/images1/Black-World-Map-Wallpaper-2.jpg" style="display:block; max-width: 60%; margin: 2rem auto;"/>
+
+### Layer 2
+Outline of countries or cities around the world with labelled names.
+
+### Layer 3
+Points corresponding to data centers and servers around the world. Something like this, but for the world: 
+
+<img alt="points on a map" title="Points on a map" src="https://lizardpoint.com/geography/images/maps/usa-maj-cities.gif" style="display:block; max-width: 60%; margin: 2rem auto;"/>
+
+### Layer 4
+Lines or arrows between servers that represent requests. A thicker or brighter line means more requests. The lines should cluster together when the zoom level is big enough for server points to cluster together. Something like this:
+
+<img alt="points on a map" title="Points on a map" src="https://konstantingreger.net/wp-content/uploads/2018/08/plot-flights-fra-corrected-1200x786.png" style="display:block; max-width: 60%; margin: 2rem auto;"/>
+
+### Layer 5
+A legend in the corner explaining the map and showing what the thicknesses / brightness corresponds to in terms of the number of requests.
+
+## 3.
+Your colleague has found some ruins during a hike in the Blue Mountains and recorded the coordinates of structures on her phone(RCFeature.csv). She would like to map her points but has no computer or mapping skills. Can you make a map that she can work with using only a browser? She needs an interactive map that she can download to her computer and use straightaway.
+
+```{r message=FALSE, warning=FALSE, results='hide'}
 library(leaflet)
 library(tidyverse)
 library(htmltools)
+library(htmlwidgets)
 
 ```
 
 
-```{r}
-data_points <- read_csv('RCFeature.csv')
+```{r message=FALSE, warning=FALSE, results='hide'}
+data_points <- read_csv('RCFeature.csv') # Read the data
 
-leaflet() %>%
-  setView(lat = -33.7636569, lng = 150.2925029, zoom = 13) %>%
-  addProviderTiles('OpenTopoMap') %>%
-  addCircleMarkers(
-    clusterOptions = markerClusterOptions(), # Good idea, since they are very condensed
-    lng = data_points$Longitude,
-    lat = data_points$Latitude,
-    fillOpacity = 0.6,
-    opacity = 0,
-    popup = paste(
+map <- leaflet() %>%
+  setView(lat = -33.7636569, lng = 150.2925029, zoom = 13) %>% # Look at Katoomba
+  addProviderTiles('OpenTopoMap') %>% # Use this topography map
+  addCircleMarkers( # Add circles on the data points
+    radius = data_points$Accuracy, # Doesn't really work with clustering :(
+    clusterOptions = markerClusterOptions(), # Good idea, since points are very condensed
+    lng = data_points$Longitude, # Location of point
+    lat = data_points$Latitude, # Location of point
+    fillOpacity = 0.6, # Looks nicer, but only without clustering
+    opacity = 0, # No line around the circle (only without clustering)
+    popup = paste( # `label` will make hovering show data, but it will not display it nicely
       '<p><strong>FeatureType: </strong>', data_points$FeatureType, '</p>',
       '<p><strong>FeatureID: </strong>', data_points$FeatureID, '</p>',
       '<p><strong>Description: </strong>', data_points$Description, '</p>'
     )
   ) %>%
-  addMiniMap(position = 'bottomright', tiles = 'OpenTopoMap') %>%
-  addMeasure(position = 'bottomleft', primaryLengthUnit = 'meters', primaryAreaUnit = 'sqmeters')
-  
-  
-  
-  
+  addMiniMap(position = 'bottomright', tiles = 'OpenTopoMap') %>% # Shows where we are on a mini map
+  addMeasure(position = 'bottomleft', primaryLengthUnit = 'meters', primaryAreaUnit = 'sqmeters') # Gives us tools to measure distances etc
   
 ```
+
+```{r message=FALSE, warning=FALSE, results='hide'}
+# Saves the map:
+saveWidget(map, file="castle-ruins.html", selfcontained = TRUE)
