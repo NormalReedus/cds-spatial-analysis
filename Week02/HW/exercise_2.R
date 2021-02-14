@@ -1,10 +1,3 @@
-##-----------------------------------------------##
-##    Author: Adela Sobotkova                    ##
-##    Institute of Culture and Society           ##
-##    Aarhus University, Aarhus, Denmark         ##
-##    adela@cas.au.dk                             ##
-##-----------------------------------------------##
-
 #### Goals ####
 
 # - Understand the provided datasets

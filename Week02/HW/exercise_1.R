@@ -1,10 +1,3 @@
-##-----------------------------------------------##
-##    Author: Adela Sobotkova                    ##
-##    Institute of Culture and Society           ##
-##    Aarhus University, Aarhus, Denmark         ##
-##    adela@cas.au.dk                             ##
-##-----------------------------------------------##
-
 #### Goals ####
 
 # - Modify the provided code to improve the resulting map

@@ -2,10 +2,14 @@
 title: "Exercise1"
 output: html_document
 ---
-## Setup
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-# install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")
+
+#install.packages("sf")
+#install.packages("raster")
+#install.packages("tmap")
+#install.packages("spData")
+#install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")
 
 library(sf)
 library(raster)
