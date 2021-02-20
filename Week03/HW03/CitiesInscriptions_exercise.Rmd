@@ -61,6 +61,7 @@ st_crs(cities_sf3035)
 
 ### Question 1: 
 *What are the measurement units of the `cities_sf3035` object?*
+
 #### Answer
 Looking at the CRS-information with `st_crs`, it looks to be metres.
 
@@ -166,6 +167,7 @@ Oooof. That was some serious wrangling!
 
 ### Question 2: 
 *Which part of the world are the inscriptions from?*
+
 #### Answer
 Italy.
 
@@ -220,11 +222,15 @@ c_buff <- st_union(cities_it)
 
 # Calculate the number of inscriptions in urban and rural areas. This may take a couple seconds
 insc_urban <- st_intersection(insc_sf3035, c_buff)
+nrow(insc_urban)
 insc_rural <- st_difference(insc_sf3035, c_buff)
+nrow(insc_rural)
 ```
 
 ### Question 3: 
 *What is the ratio of urban to rural inscriptions?*
+
+#### Answer
 There are 1605 features in the rural spatial object and 10462 features in the urban object.
  
 # Task 7: CHALLENGE - Duplicates and average distance 
@@ -254,6 +260,8 @@ duplicates
 
 ### Questions 4 - 7: 
 *4. How serious is the overcounting problem?* 
+
+#### Answer
 There are 1394 inscriptions that have already been counted within another city buffer.
 
 To combat this, you could select the inscriptions that have been counted more than once and calculate the distance to the center of the cities they have been counted in, then remove the count from every city except for the one with the shortest distance.
