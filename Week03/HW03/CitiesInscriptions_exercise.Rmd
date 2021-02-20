@@ -153,7 +153,7 @@ colnames(inscriptions)
 i_sm <- inscriptions %>% 
   slice(1:100) %>% 
   filter(lengths(coordinates) == 2) %>% # Remove all the empty coordinate data
-  mutate(coordinates = gsub("[^0-9.,]+", "", coordinates)) %>% # Remove all non digit (or . and ,)
+  mutate(coordinates = gsub("[^0-9.,]+", "", coordinates)) %>% # Remove all non digit, non punctuation)
   separate(col = coordinates, into = c("longitude","latitude"), sep = ',') %>%
   mutate(latitude = as.numeric(latitude),
          longitude = as.numeric(longitude))
@@ -179,18 +179,19 @@ Now that the hard work is done, let's apply the wrangling to the full dataset an
 
 ```{r insc-sf, eval=FALSE}
 i <- inscriptions %>% 
-  separate( __________) %>% 
-  mutate(___________) %>% 
-  filter(____________) %>% 
-  filter(__________) %>% 
-  filter(longitude > 5 && longitude < 20)
+  filter(lengths(coordinates) == 2) %>% # Remove all the empty coordinate data
+  mutate(coordinates = gsub("[^0-9.,]+", "", coordinates)) %>% # Remove all non digit, non punctuation)
+  separate(col = coordinates, into = c("longitude","latitude"), sep = ',') %>% 
+  mutate(latitude = as.numeric(latitude),
+         longitude = as.numeric(longitude)) %>% 
+  filter(longitude > 5 & longitude < 20)
 
 
 # Create a sf object
-insc_sf4326 <- st_as_sf(i, coords = ___________, crs = _________)
+insc_sf4326 <- st_as_sf(i, coords = c('longitude', 'latitude'), crs = 4326)
 
 # Plot
-plot(__________(insc_sf4326))
+plot(st_geometry(insc_sf4326))
 ```
 
 # Task 6: Select inscriptions that fall into the cities' buffer
@@ -206,26 +207,25 @@ To reduce the computational intensity of the final intersection, it is a good id
 
 ```{r intersection, eval=FALSE}
 # Project the sf object into EPSG3035 so it is consistent with cities and their buffers
-insc_sf3035 <- st_transform(________________)
-
+insc_sf3035 <- st_transform(insc_sf4326, crs = 3035)
 
 # Create a convex hull around the inscriptions's points dissolved into a MULTIPOINT
-insc_ch <- st_convex_hull(_________(insc_sf3035))
+insc_ch <- st_convex_hull(st_union(insc_sf3035))
 
 # Create a buffer from a cluster of cities that fall within the convex hull 
-cities_it <- st_intersection(insc_ch, _________(cities_5km))
+cities_it <- st_intersection(insc_ch, st_geometry(cities_5km))
 
 # Dissolve the 399 buffers into a single MULTIPOLYGON buffer feature
 c_buff <- st_union(cities_it)
 
 # Calculate the number of inscriptions in urban and rural areas. This may take a couple seconds
-insc_urban <- ____________(insc_sf3035, c_buff)
-insc_rural <- ____________(insc_sf3035, c_buff)
+insc_urban <- st_intersection(insc_sf3035, c_buff)
+insc_rural <- st_difference(insc_sf3035, c_buff)
 ```
 
 ### Question 3: 
 *What is the ratio of urban to rural inscriptions?*
-
+There are 1605 features in the rural spatial object and 10462 features in the urban object.
  
 # Task 7: CHALLENGE - Duplicates and average distance 
 
@@ -240,12 +240,23 @@ Additionally, it's a good idea to check the average distance between inscription
 * Calculate the mean distance between the inscriptions and nearest settlement in the subset of cities with `st_distance()` and visually assess the trend. (The subset cities object should be reduced to those cities that fall within the convex hull of inscriptions). 
 
 ```{r overcounting and distance, eval=FALSE}
+# a list of all of the points in insc_sf3035 that fall inside every individual buffer in cities_it (cities in italy)
+insc_per_city <- st_geometry(cities_it) %>%
+  st_intersects(insc_sf3035)
+
+insc_per_city_count <- length(unlist(insc_per_city))
+unique_insc_in_cities_count <- nrow(insc_urban) # same as unique(insc_per_city_count)
+duplicates <- insc_per_city_count - unique_insc_in_cities_count
+duplicates
 
 ```
 
 
 ### Questions 4 - 7: 
 *4. How serious is the overcounting problem?* 
+There are 1394 inscriptions that have already been counted within another city buffer.
+
+To combat this, you could select the inscriptions that have been counted more than once and calculate the distance to the center of the cities they have been counted in, then remove the count from every city except for the one with the shortest distance.
 
 *5. What is the average distance of all inscriptions from all the cities within the convex hull?*
 
