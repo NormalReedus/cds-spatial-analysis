@@ -1,6 +1,6 @@
 ---
 title: "12 - Compute Tree Canopy"
-author: "Adela Sobotkova"
+author: "Magnus Bendix Borregaard"
 date: "07/01/2021 updated `r format(Sys.time(), '%B %d, %Y')`" 
 output:
   rmdformats::readthedown:
@@ -40,28 +40,30 @@ You will produce counts of all trees by neighborhood in NYC and create a single 
 
 ```{r count-trees, eval=FALSE}
 # Load data and libraries
-_______
+library(sf)
+library(raster)
+library(dplyr)
 
 # Read in the trees shapefile
-trees <- _____
+trees <- st_read('../data/trees.shp')
 
 # Read in the neighborhood shapefile
-neighborhoods <- _____
+neighborhoods <- st_read('../data/neighborhoods.shp')
 
 # Read in the tree canopy single-band raster
-canopy <- _____
+canopy <- raster('../data/canopy.tif')
 
 # Read in the manhattan Landsat image multi-band raster
-manhattan <- _____
+manhattan <- brick('../data/manhattan.tif')
 
 # Compute the counts of all trees by hood
-tree_counts <- ___(trees, hood)
+tree_counts <- count(trees, nta)
 
 # Take a quick look
-___(tree_counts)
+head(tree_counts)
 
 # Remove the geometry
-tree_counts_no_geom <- ____(___, ___)
+tree_counts_no_geom <- st_set_geometry(tree_counts, NULL)
 
 # Rename the n variable to tree_cnt
 tree_counts_renamed <- ___(tree_counts_no_geom, tree_cnt = ___)
