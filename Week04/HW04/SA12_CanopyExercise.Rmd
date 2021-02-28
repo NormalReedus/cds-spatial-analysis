@@ -19,7 +19,8 @@ opts_chunk$set(echo=TRUE,
                tidy=TRUE,
                comment=NA,
                message=FALSE,
-               warning=FALSE)
+               warning=FALSE,
+               results='hide')
 opts_knit$set(width=75)
 ```
 
@@ -38,7 +39,7 @@ You will produce counts of all trees by neighborhood in NYC and create a single 
 * The default for the `count()` function is to name the count field n. Use the `rename()` function from dplyr to change the column called `n` to `tree_cnt`.
 * Use `hist()` to create a quick histogram of the tree counts.
 
-```{r count-trees, eval=FALSE}
+```{r count-trees}
 # Load data and libraries
 library(sf)
 library(raster)
@@ -66,10 +67,10 @@ head(tree_counts)
 tree_counts_no_geom <- st_set_geometry(tree_counts, NULL)
 
 # Rename the n variable to tree_cnt
-tree_counts_renamed <- ___(tree_counts_no_geom, tree_cnt = ___)
+tree_counts_renamed <- rename(tree_counts_no_geom, tree_cnt = n)
   
 # Create histograms of the total counts
-___(tree_counts_renamed$tree_cnt)
+hist(tree_counts_renamed$tree_cnt)
 
 ```
 
@@ -86,25 +87,25 @@ We have the tree counts (from the previous exercise). In this exercise you will 
 * Use `mutate()` with the given `ifelse()` code to replace `NA`s with 0.
 * Create a new column in `neighborhoods` called `tree_density` which is `tree_cnt/area`. 
 
-```{r tree-density, eval=FALSE}
+```{r tree-density}
 # Compute areas and unclass
-areas <- ___(___(neighborhoods))
+areas <- unclass(st_area(neighborhoods))
 
 # Add the areas to the neighborhoods object
-neighborhoods_area <- ___(neighborhoods, area = areas)
+neighborhoods_area <- mutate(neighborhoods, area = areas)
 
 # Join neighborhoods and counts by shared columns (find the matching one in neighborhoods)
-neighborhoods_counts <- ___(neighborhoods_area, 
-                            tree_counts_renamed, by = c(___ = "nta")
+neighborhoods_counts <- left_join(neighborhoods_area, 
+                            tree_counts_renamed, by = c("ntacode" = "nta"))
 
 # Replace NA values with 0 (lookup ifelse() function if needed)
-neighborhoods_counts <- ___(neighborhoods_counts, 
+neighborhoods_counts <- mutate(neighborhoods_counts, 
                             tree_cnt = ifelse(is.na(tree_cnt), 
                                               0, tree_cnt))
 
 # Compute the density
 neighborhoods_counts <- mutate(neighborhoods_counts, 
-                               tree_density = ___/___)
+                               tree_density = tree_cnt/area)
 ```
 
 You're part way there. You have now computed the tree density variable using, in part, the `sf` function `st_area()`. In the next exercises you will compute the average tree canopy values and then compare.
@@ -120,21 +121,21 @@ In the previous exercises you computed tree density by neighborhood using tree c
 * Compute the mean of `canopy` values by neighborhood using `raster::extract()` with the argument fun = mean (this might take a minute).
 * Use `mutate`() to add a new column `avg_canopy` to neighborhoods, which is equal to `canopy_neighborhoods`.
 
-```{r tree-canopy, eval=FALSE}
+```{r tree-canopy}
 # Confirm that you have the neighborhood density results
-___(neighborhoods_counts)
+head(neighborhoods_counts)
 
 # Transform the neighborhoods CRS to match the canopy layer
-neighborhoods_crs <- ___(neighborhoods_counts, ___ = ___(canopy, ___ = ___))
+neighborhoods_crs <- st_transform(neighborhoods_counts, crs = crs(canopy, asText = TRUE))
 
 # Convert neighborhoods object to a Spatial object (optional)
-neighborhoods_sp <- ___(neighborhoods_crs, ___)
+neighborhoods_sp <- as(neighborhoods_crs, Class = 'Spatial')
 
 # Compute the mean of canopy values by neighborhood 
-canopy_neighborhoods <- ___(canopy, neighborhoods_sp, fun = ___)
+canopy_neighborhoods <- raster::extract(canopy, neighborhoods_sp, fun = mean)
 
 # Add the mean canopy values to neighborhoods
-neighborhoods_avg_canopy <- ___(neighborhoods, avg_canopy = ___)
+neighborhoods_avg_canopy <- mutate(neighborhoods_crs, avg_canopy = canopy_neighborhoods)
 ```
 
 
@@ -151,25 +152,25 @@ As an initial review of the data you created you will compute correlations and c
 * Create a scatter plot of `tree_density` on the x-axis against `avg_canopy` on the y-axis using `ggplot()` and `geom_point()`. Also add a smooth using `stat_smooth()`.
 * Compute the correlation between tree density and average canopy with `cor()` by running the given code.
 
-```{r ggplot, eval=FALSE}
+```{r ggplot}
 # Load the ggplot2 package
-___
+library(ggplot2)
 
 # Create a histogram of tree density (tree_density)
-___(___, aes(x = ___)) + 
-  ___(color = "white")
+ggplot(neighborhoods_avg_canopy, aes(x = tree_density)) + 
+  geom_histogram(color = "white")
 
 # Create a histogram of average canopy (avg_canopy)
-___(___, aes(x = ___)) + 
-  ___(color = "white")
+ggplot(neighborhoods_avg_canopy, aes(x = avg_canopy)) + 
+  geom_histogram(color = "white")
 
 # Create a scatter plot of tree_density vs avg_canopy
-___(neighborhoods, aes(x = ___, y = ___)) + 
-    ___() + 
-    ___()
+ggplot(neighborhoods_avg_canopy, aes(x = tree_density, y = avg_canopy)) + 
+    geom_point() + 
+    stat_smooth()
 
 # Compute the correlation between density and canopy
-cor(neighborhoods$tree_density, neighborhoods$avg_canopy)
+cor(neighborhoods_avg_canopy$tree_density, neighborhoods_avg_canopy$avg_canopy)
 ```
 
 
@@ -188,26 +189,26 @@ The `geom_sf()` function operates like any other layer in `ggplot2` where you ca
 * Alter the map of `tree_density` by changing the colors with `scale_fill_gradient()`. The hex codes (a `#` followed by numbers) for shades of green have been provided.
 * Alter the map of `avg_canopy` by changing the colors with `scale_fill_gradient()`. The hex codes (a `#` followed by numbers) for shades of green have been provided.
 
-```{r map, eval=FALSE}
+```{r map}
 # Simplify name
 neighborhoods <- neighborhoods_avg_canopy
 
 # Plot the tree density with default colors
-___(neighborhoods) + 
-  ___(aes(fill = ___))
+ggplot(neighborhoods) + 
+  geom_sf(aes(fill = tree_density))
 
 # Plot the tree canopy with default colors
-___(neighborhoods) + 
-  ___(___(___ = avg_canopy))
+ggplot(neighborhoods) + 
+  geom_sf(aes(fill = avg_canopy))
   
 # Plot the tree density using scale_fill_gradient()
-___(neighborhoods) + 
-  ___(aes(fill = tree_density)) + 
-  ___(low = "#edf8e9", high = "#005a32")
+ggplot(neighborhoods) + 
+  geom_sf(aes(fill = tree_density)) + 
+  scale_fill_gradient(low = "#edf8e9", high = "#005a32")
 
 # Plot the tree canopy using the scale_fill_gradient()
-___(neighborhoods) + 
-  ___(___(___ = ___)) +
+ggplot(neighborhoods) + 
+  geom_sf(aes(fill = avg_canopy)) +
   scale_fill_gradient(low = "#edf8e9", high = "#005a32")
 ```
 
@@ -230,28 +231,31 @@ The `tmap` package is an excellent tool for making maps. You'll see that it simp
   + `style = "quantile"`
   + `n = 7`.
 
-```{r tmap, eval=FALSE}
+```{r tmap}
 # Load tmap library
-___(___)
+library(tmap)
 
 # Create a simple map of neighborhoods
-___(neighborhoods) + 
-    ___()
+tm_shape(neighborhoods) + 
+    tm_polygons()
 
 # Create a color-coded map of neighborhood tree density
-___(___) + 
-    ___(___)
+tm_shape(neighborhoods) + 
+    tm_polygons(col = 'tree_density')
 
 # Style the tree density map
-___(neighborhoods) + 
-    ___("tree_density", palette = ___, 
+tm_shape(neighborhoods) + 
+    tm_polygons("tree_density", palette = 'Greens', 
         style = "quantile", n = 7, 
         title = "Trees per sq. KM")
 
+# avg_canopy does not consist of numbers that tmap wants to plot, so we convert it first
+neighborhoods <- mutate(neighborhoods, avg_canopy = as.numeric(avg_canopy))
+
 # Create a similar map of average tree canopy
-___(neighborhoods) + 
-    ___("avg_canopy", palette = "Greens", 
-        style = ___, n = ___, 
+tm_shape(neighborhoods) + 
+    tm_polygons("avg_canopy", palette = 'Greens', 
+        style = "quantile", n = 7, 
         title = "Average tree canopy (%)")
 ```
 
@@ -268,18 +272,18 @@ Note: In `map2`, you will make use of the `bbox` argument to force the view exte
 * Remember to load `tmap`
 
 1. Create and view a map of the `manhattan` aerial image with `tm_shape()` and `tm_raster()`.
-```{r nice-map-1, eval=FALSE}
+```{r nice-map-1}
 # Create a map of the manhattan aerial photo
-___(manhattan) + 
-  ___()
+tm_shape(manhattan) + 
+  tm_rgb()
 ```
 
 2. Create and view a map of the `neighboorhoods` borders with `tm_shape()` and `tm_borders()`.
 
-```{r nb-borders, eval=FALSE}
+```{r nb-borders}
 # Create a map of the neighborhood polygons
-___(neighborhoods) + 
-  ___(col = "black", lwd = 0.5, alpha = 0.5)
+tm_shape(neighborhoods) + 
+  tm_borders(col = "black", lwd = 0.5, alpha = 0.5)
 ```
 
 
@@ -287,8 +291,26 @@ ___(neighborhoods) +
 4. Create the second map of tree measures with `tm_shape()` and `tm_polygons()`.
 5. Combine the two maps with `tmap_arrange()`, use `asp = NA` to map height/width to match the bounding box.
 
-```{r your-code-below, echo = TRUE}
+```{r your-code-below}
+library(tmap)
+library(sf)
+library(raster)
+
 # Your code goes below
+map1 <- tm_shape(manhattan) + 
+  tm_rgb() +
+  tm_shape(neighborhoods) +
+  tm_borders(col = "black", lwd = 0.5, alpha = 0.5)
+
+map2 <- tm_shape(neighborhoods) +
+  tm_polygons(col = 'avg_canopy', palette = 'Greens', 
+        title = "Average tree canopy (%)")
+
+map3 <- tm_shape(neighborhoods) +
+  tm_polygons(col = 'tree_density', palette = 'Greens', 
+        title = "Trees per sq. KM")
+
+tmap_arrange(map1 + map2, map1, map1 + map3, asp = NA)
 ```
 
 
