@@ -1,0 +1,103 @@
+---
+title: "W5 Task 1"
+author: "Magnus Bendix Borregaard"
+date: "3/4/2021"
+output: html_document
+---
+
+# Task 1: Analyze burial mound health
+
+A number of factors can negatively affect cultural heritage, from natural post-depositional processes, such as chemical and mechanical weathering, to animal-activity and human-inflicted damage, which can be either direct (excavation, looting) or indirect (development, agricultural activities, transport). In order to understand the anthropic impacts on cultural heritage, archaeologists routinely assess the condition of different types of cultural remains. In the burial mounds dataset, the `Condition` column contains a professional judgment of monument health recorded on a Likert-scale from 1 to 5, where 1 means the feature is in pristine state, while 5 means it is extinct or nearly so. The `Robbed` column, specifies via a binary value of 1/0 (corresponding to Yes/No), whether looting was detected on site. The `LandUse` column contains the surrounding land use, which can also relate to the condition.
+
+Design a study to evaluate direct or indirect impacts on burial mounds. You can use the provided datasets to extract a number of possible variables for this purpose:
+
+- location-related variables such as elevation, aspect, slope (are mounds on steep slopes or in lower elevations disproportionately more vulnerable? )
+- mound size (are larger mounds disproportionately affected by looters?)
+- mound proximity to roads, rivers, nearest settlement boundary or center, regional capital boundary or center (do looters rob mounds that are closer to the settlements? are mounds near large urban centers disproportionally damaged/looted? are mounds in the vicinity of the Koprinka reservoir - the large dam in the middle of the valley, see kaz_lakes.shp - more damaged?)
+- landuse around the mound (are mounds in agricultural fields more prone to damage than mounds in the forests?)
+
+Take one or more questions and elaborate it into a study using spatial operations on vector and raster.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(sf)
+library(tidyverse)
+library(raster)
+library(tmap)
+```
+
+## Condition and land use correlation
+Is there a correlation between the median condition of burial mounds and the type of land wherein they are located?
+
+```{r}
+mounds_shp <- st_read('data/KAZ_mounds.shp')
+mounds_data <- read_csv('data/KAZ_mdata.csv')
+
+condition_by_land <- mounds_data %>%
+	group_by(LandUse) %>%
+	summarise(
+		# We use the median, since other factors (like robbing) might create outliers in the condition data
+		# that a simple mean might favour too heavily compared to the median
+		Condition = median(Condition)
+	)
+
+m_cond_by_print(m_cond_by_land)
+```
+### Answer
+
+Looking at the data, it seems that there might be a significantly higher median condition score (3.8 - higher is worse) of burial mounds on beaches compared to the rest. This makes sense when thinking about how shifting the 'soil' is, how corroding water and waves can be etc.
+
+
+
+
+```{r}
+mounds <- left_join(mounds_shp, mounds_data, by = c('TRAP_Code' = 'MoundID'))
+aster <- raster('data/Aster.tif')
+aster <- reclassify(aster, cbind(-Inf, 0, NA), right = FALSE)
+#area <- st_read('data/KAZ_surveyarea.shp')
+
+# Crop the astermap with the area of a rectangle made from the bounding box of mounds
+
+astermap <- tm_shape(aster) +
+	tm_raster()
+
+moundsmap <- tm_shape(mounds) + 
+	tm_dots()
+
+areamap <- tm_shape(area) + 
+	tm_polygons()
+
+astermap + moundsmap
+
+#east_sat <- brick('data/KazEastfused.tif') %>%
+#	aggregate(fact=10)
+
+
+tm_shape(east_sat) +
+	tm_rgb()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
