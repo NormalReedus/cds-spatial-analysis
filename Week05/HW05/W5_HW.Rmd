@@ -1,0 +1,189 @@
+---
+title: "Week 5 Homework"
+author: "Magnus Bendix Borregaard"
+date: "3/4/2021"
+output: html_document
+---
+
+# Task 1: Analyze burial mound health
+
+A number of factors can negatively affect cultural heritage, from natural post-depositional processes, such as chemical and mechanical weathering, to animal-activity and human-inflicted damage, which can be either direct (excavation, looting) or indirect (development, agricultural activities, transport). In order to understand the anthropic impacts on cultural heritage, archaeologists routinely assess the condition of different types of cultural remains. In the burial mounds dataset, the `Condition` column contains a professional judgment of monument health recorded on a Likert-scale from 1 to 5, where 1 means the feature is in pristine state, while 5 means it is extinct or nearly so. The `Robbed` column, specifies via a binary value of 1/0 (corresponding to Yes/No), whether looting was detected on site. The `LandUse` column contains the surrounding land use, which can also relate to the condition.
+
+Design a study to evaluate direct or indirect impacts on burial mounds. You can use the provided datasets to extract a number of possible variables for this purpose:
+
+- location-related variables such as elevation, aspect, slope (are mounds on steep slopes or in lower elevations disproportionately more vulnerable? )
+- mound size (are larger mounds disproportionately affected by looters?)
+- mound proximity to roads, rivers, nearest settlement boundary or center, regional capital boundary or center (do looters rob mounds that are closer to the settlements? are mounds near large urban centers disproportionally damaged/looted? are mounds in the vicinity of the Koprinka reservoir - the large dam in the middle of the valley, see kaz_lakes.shp - more damaged?)
+- landuse around the mound (are mounds in agricultural fields more prone to damage than mounds in the forests?)
+
+Take one or more questions and elaborate it into a study using spatial operations on vector and raster.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(sf)
+library(tidyverse)
+library(raster)
+library(tmap)
+```
+
+## Condition and land use correlation
+Is there a correlation between the median condition of burial mounds and the type of land wherein they are located?
+
+```{r message=FALSE}
+# Read in the mound data
+mounds_data <- read_csv('data/KAZ_mdata.csv')
+
+# Groups by Land Use and shows the mean condition for every type of land use
+condition_by_land <- mounds_data %>%
+	group_by(LandUse) %>%
+	summarise(
+		Condition = mean(Condition)
+	)
+
+print(condition_by_land)
+```
+## Answer
+
+Looking at the data, it seems that there might be a significantly higher mean condition score (3.8 - higher is worse) of burial mounds on beaches compared to the rest. This makes sense when thinking about how shifting the 'soil' is, how corroding water and waves can be etc.
+
+
+
+## Elevation and condition / looting correlation
+Is there a correlation between how high up the mounds are located and whether it has been looted or what condition it is in?
+
+```{r results='hide'}
+# Let's get the spatial data and other data joined, but only for the mounds we have spatial data on
+mounds_shp <- st_read('data/KAZ_mounds.shp')
+mounds <- left_join(mounds_shp, mounds_data, by = c('TRAP_Code' = 'MoundID'))
+
+# Load elevation map and clean for missing values
+aster <- raster('data/Aster.tif')
+aster <- reclassify(aster, cbind(-Inf, 0, NA), right = FALSE)
+
+# The CRS's match
+st_crs(mounds)
+crs(aster)
+
+# Crop elevation map to the bounding box of mounds
+elev <- crop(aster, st_bbox(mounds))
+
+# Take a look at the elevation map with mounds
+tm_shape(elev) +
+	tm_raster(title = 'Elev. m.') +
+tm_shape(mounds) + 
+	tm_dots() +
+	tm_layout(
+		'Kazanlak Burial Mounds',
+		title.position = c('right', 'bottom'),
+		legend.position = c('left', 'bottom')
+	)
+```
+```{r}
+# Extract elevation for every mound and add to data frame as Elevation column
+mounds_elev <- raster::extract(elev, mounds)
+mounds$Elevation <- mounds_elev
+
+# Check for correlation between condition and elevation
+# using the average since elevation is a continuous scale
+condition_by_elev <- st_drop_geometry(mounds) %>%
+	group_by(Condition) %>%
+	drop_na() %>% # there are a few missing values for Elevation
+	summarise(
+		Elevation = mean(Elevation)
+	)
+print(condition_by_elev)
+
+# How about lootings?
+robbed_by_elev <- st_drop_geometry(mounds) %>%
+	group_by(Robbed) %>%
+	drop_na() %>% # there are a few missing values for Elevation and Robbed 
+	summarise(
+		Elevation = mean(Elevation)
+	)
+print(robbed_by_elev)
+```
+## Answer
+It seems that the elevation differences between the burial mounds is relatively small, and as such the condition and whether or not they have been robbed does not show much correlation with the elevation.
+
+Interestingly, elevation could possibly have something to do with the condition of burial mounds, if higher elevations somehow meant that they were completely obliterated beyond discovery, which could be a reason for the fact that there are no high-altitude burial mounds - but I doubt it.
+
+## Is there then a correlation between the slope angle and / or aspect (which direction it is facing) and the burial mounds' condition?
+
+```{r}
+# Create raster of slope
+slope <- raster::terrain(elev, opt='slope', unit='degrees', neighbors=4)
+
+# Take a look
+tm_shape(slope) +
+	tm_raster(title = 'Slope. deg.') +
+tm_shape(mounds) + 
+	tm_dots() +
+	tm_layout(
+		'Kazanlak Burial Mounds',
+		title.position = c('right', 'bottom'),
+		legend.position = c('left', 'bottom')
+	)
+
+# Create raster of aspect
+aspect <- raster::terrain(elev, opt='aspect', unit='degrees', neighbors=4)
+
+# Take a look
+tm_shape(aspect) +
+	tm_raster(title = 'Angle. deg.') +
+tm_shape(mounds) + 
+	tm_dots() +
+	tm_layout(
+		'Kazanlak Burial Mounds',
+		title.position = c('right', 'bottom'),
+		legend.position = c('left', 'bottom')
+	)
+
+# Append slope and aspect to data frame as new columns
+mounds <- mounds %>%
+	mutate(Slope = raster::extract(slope, mounds)) %>%
+	mutate(Aspect = raster::extract(aspect, mounds))
+
+# See if there is a correlation between slope and condition
+condition_by_slope <- st_drop_geometry(mounds) %>%
+	group_by(Condition) %>%
+	drop_na() %>% # there are a few missing values for Slope
+	summarise(
+		Slope = mean(Slope)
+	)
+print(condition_by_slope)
+
+# See if there is a correlation between aspect and condition
+condition_by_aspect <- st_drop_geometry(mounds) %>%
+	group_by(Condition) %>%
+	drop_na() %>% # there are a few missing values for Slope
+	summarise(
+		Aspect = mean(Aspect)
+	)
+print(condition_by_aspect)
+```
+## Answer
+All of the mounds are located on very flat ground (majority under 10 degrees) which makes it hard to say much about how slope and aspect correlate with burial mound condition. We can, however, hypothesize that these relatively flat valley conditions were taken into consideration when choosing burial mound locations in the first place. This could be because flat locations are easier to dig burial mounds in (and probably more sturdy than heavily sloped locations), and valleys are more commonly where towns would be, which makes high altitude burial mounds harder to reach to both dig out and maybe visit.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
