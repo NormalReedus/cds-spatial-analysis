@@ -40,18 +40,13 @@ library(leaflet)
 
 Next, load your spatial data - polygons representing the suburbs of Copenhagen. 
 ```{r}
-suburbs <- st_read("data/bydel.shp")
+suburbs <- st_read("data/bydel.shp", options = "ENCODING=WINDOWS-1252") # æøå
 plot(suburbs$geometry)
 tail(suburbs)
 #write_rds(suburbs, "data/CPHsuburbs.rds")
 
 suburbs$id
-#Clean up suburb names
-suburbs$navn
 
-# suburbs %>% 
-#   select(navn) %>% 
-#   mutate(Name=gsub("<f8>|<d8>","oe",navn))
 ```
 Next attach the attribute data. 
 I read the data from a google sheet where my colleagues and I can edit it. You can load it from there if you have a googlesheets4 package installed, or use the wc.csv in the data folder
@@ -108,6 +103,7 @@ tm_shape(wc1950) +
   tm_borders(col = "black",
              lwd = 1) +
   tm_polygons("flats",
+              id = 'navn',
              style = "pretty")+
   tm_legend(legend.position= c("RIGHT", "TOP"))+
   tm_compass(position = c("RIGHT", "BOTTOM"),
@@ -124,12 +120,12 @@ tm_shape(wc1950) +
 
 ## Flats through time
 ```{r view-flats}
-library(tmap)
-tmap_options(limits = c(facets.view = 6)) # we want to view 6 years
+tmap_options(limits = c(facets.view = 6)) # we want to view 6 years (knitting might not do more than 4 per default)
 tmap_mode(mode = "view" )
 tm_shape(wc_spatial) +
   tm_facets(by = "year")+
   tm_polygons("flats",
+              id = 'navn',
              style = "pretty")+
   tm_layout(main.title = "Copenhagen Flats",
             legend.outside = TRUE)
@@ -145,12 +141,11 @@ wc_spatial <- wc_spatial %>%
 ```
 
 ```{r viewflats-per-km,eval = FALSE}
-library(tmap)
-tmap_options(limits = c(facets.view = 6))
 tmap_mode(mode = "view" )
 tm_shape(wc_spatial) +
   tm_facets(by = "year") +
   tm_polygons("flat_per_km",
+              id = 'navn',
               n=5,
              style = "quantile") #+
   # tm_layout(main.title = "Copenhagen Flats per sq km",
@@ -162,7 +157,6 @@ tm_shape(wc_spatial) +
 
 Lets calculate the baths and toilets available per square kilometer per each suburb
 ```{r view-pct-bath}
-library(tmap)
 tmap_options(limits = c(facets.view = 6))
 tmap_mode(mode = "view" )
 tm_shape(wc_spatial) +
@@ -170,8 +164,9 @@ tm_shape(wc_spatial) +
   # tm_borders(col = "black",
   #            lwd = 1) +
   tm_polygons("pct_bath",
+              id = 'navn',
              style = "pretty", 
-             title = "% of flats with \n access to bath") #+
+             title = "% of flats with <br> access to bath") #+
   # tm_layout(main.title = "Percentage of flats with access to a bath", legend.outside = TRUE)
 ```
 
@@ -184,6 +179,7 @@ tm_shape(wc_spatial) +
   # tm_borders(col = "black",
   #            lwd = 1) +
   tm_polygons("pct_wc",
+              id = 'navn',
              style = "pretty", 
              title = "% of flats with <br>access to WC")+
   tm_layout(main.title = "Percentage of flats with access to WC",
@@ -408,16 +404,6 @@ for(i in 1:999){
 hist(nn.sim,breaks=30)
 abline(v=mean(nncross(split(b_ppp)$O,split(b_ppp)$H)$dist),col="red")
 ```
-### Compute empirical cumulative distribution
-```{r nn-cumul}
-nn.sim.ecdf  <-  ecdf(nn.sim)
-```
-
-### See how the original stat compares to the simulated distribution
-```{r}
-nn.sim.ecdf(mean(nncross(split(b_ppp)$O,split(b_ppp)$H)$dist)) 
-```
-
 
 ## Ripley-K cross function
 
@@ -430,7 +416,7 @@ rc <- seq(0, 3000, 100)
 
 # Run the Kcross function
 kcross <- Kcross(b_ppp, i="H",j="O", 
-                 # r=rc,
+                 #r=rc,
                  correction='none') 
 plot(kcross)
 ```
