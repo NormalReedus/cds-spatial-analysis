@@ -60,7 +60,7 @@ which(grepl("Vest",mun$NAME_2))
 
 mun$NAME_2[31] <- "Aarhus"
 mun$NAME_2[21] <- "Høje-Taastrup"
-mun$NAME_2[60] <- "Vesthimmerlands"
+mun$NAME_2[60] <- "Vesthimmerlands" # wrong but consistent now, easier to edit here than in gsheets
 ```
 
 # Task 2: Wrangle the attributes and join to the spatial data
@@ -94,7 +94,7 @@ electorate <- elec %>%
 
 # Merge the summary with the granual election dataset and spatial polygons
 elections <- mun %>% 
-  select(NAME_2) %>% 
+  dplyr::select(NAME_2) %>% 
   merge(elec, by.x = "NAME_2",by.y ="Region") %>% 
   merge(electorate, by.x = "NAME_2",by.y ="Region") %>% 
   group_by(NAME_2, Party) %>% 
@@ -249,8 +249,8 @@ In this example you'll use the Moran "I" statistic to test the spatial correlati
 ```{r}
 # Reload the data if needed
 # elections <- readRDS("data/elections_sp.rds")
-elections
-plot(elections$geometry)
+mun
+plot(mun$geometry)
 
 # Consider simplifying (don't go too high)
 mun_sm<- st_cast(st_simplify(mun, dTolerance = 250),
